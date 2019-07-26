@@ -141,7 +141,7 @@ mpa_name_fields = ['UID']
 # doesn't exist then you will miss the first row of your data.
 ##
 
-imatrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\original_Karin_20190725\input\interactionmatrix_MgmtF2_20190124_withIH.csv'
+imatrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\input\interactionmatrix_MgmtF2_20190124_withIH.csv'
 
 ### output1_path & output2_path ###
 #
@@ -149,9 +149,9 @@ imatrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_
 #
 ##
 
-output1_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\original_Karin_20190725\output\table1.csv'
+output1_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\output\table1.csv'
 
-output2_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\original_Karin_20190725\output\table2.csv'
+output2_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\output\table2.csv'
 
 ### output3_path ###
 #
@@ -160,7 +160,7 @@ output2_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_
 #
 ##
 
-output3_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\original_Karin_20190725\output\table3.csv'
+output3_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\output\table3.csv'
 
 ### complexFeatureClasses ###
 #
@@ -207,7 +207,7 @@ cleanUpTempData = True
 # variables below
 #
 
-inclusion_matrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\original_Karin_20190725\input\SpatialI_AssessI_20190326.csv'
+inclusion_matrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\input\SpatialI_AssessI_20190326.csv'
 
 ### override_y & _n & _u ###
 #
@@ -246,22 +246,38 @@ override_u = True # This one behaves differently from _y and _n please read abov
 #
 
 cpOverlap_newDict = False
-cpOverlap_DictPath = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\original_Karin_20190725\input\cpOverlap_rev.csv'
+cpOverlap_DictPath = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\input\cpOverlap_rev.csv'
 
 ### Join eco UIDs to table 1 output ###
 #
 # This requires pandas
 #
 
-ecoUIDs_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\original_Karin_20190725\input\mpatt_eco_UID-simple_20180823.csv'
-output1join_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\original_Karin_20190725\output\table1_joined.csv'
+ecoUIDs_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\input\mpatt_eco_UID-simple_20180823.csv'
+output1join_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\output\table1_joined.csv'
 
 ### Table 4 output ###
 #
 # A list of every cp and hu interaction by mpa
 #
 
-output4_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\original_Karin_20190725\output\table4.csv'
+output4_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\output\table4.csv'
+
+### Special Cases ###
+#
+# A dictionary of human uses that are split by activity but use the same spatial dataset
+# For instance, there is just one spatial dataset for seine fishing, but in the inclusion matrix
+# we would like to distinguish between targeted species allowed in each mpa (e.g. salmon, herring, sardine).
+# If an mpa allows more than 1 type, we only want to count this once.
+#
+
+hu_multiple = {'hu_co_demersalfishing_trapcom_d': {'variants':
+                                                   ['hu_co_demersalfishing_trapcom_d_PRAWN',
+                                                    'hu_co_demersalfishing_trapcom_d_CRAB']},
+               'hu_co_pelagicfishing_purseseine_d': {'variants':
+                                                   ['hu_co_pelagicfishing_purseseine_d_SALMON',
+                                                    'hu_co_pelagicfishing_purseseine_d_HERRING',
+                                                    'hu_co_pelagicfishing_purseseine_d_SARDINE']}}
 
 
 ######################
@@ -326,14 +342,10 @@ def createMPAdict(source_mxd, merged_name_field):
     mpa_dict = {}
 
     for layer in mpa_layers:
-        with arcpy.da.SearchCursor(layer, ["UID","PARENT_ID","NAME_E", "BIOME", "TYPE_E", "MGMT_E"]) as mpa_cursor:
+        with arcpy.da.SearchCursor(layer, ["UID","NAME_E"]) as mpa_cursor:
             for row in mpa_cursor:
                 mpa_dict[row[0]] = {}
-                mpa_dict[row[0]] = {'parent_id' : row[1],
-                                    'name' : row[2],
-                                    'biome' : row[3],
-                                    'type' : row[4],
-                                    'mgmt' : row[5]}
+                mpa_dict[row[0]] = {'name' : row[1]}
 
     return mpa_dict
 
@@ -663,6 +675,9 @@ def shouldInclude(pct_in_mpa, threshold, im, fc, mpa):
     # If fc not in inclusion matrix use conventional inclusion test
     if fc not in im[mpa]:
         return pct_in_mpa > threshold
+
+    if fc in hu_multiple:  #JC 20190703: TO DO
+        print fc
 
     # Get inclusion value
     i_val = im[mpa][fc]
@@ -1243,14 +1258,10 @@ def writeOutputTable1(otable, opath, mpa_dict):
     with open(opath, 'wb') as f:
         w = csv.writer(f)
 
-        w.writerow(['UID','parentid','name', 'biome', 'type', 'management', 'subregion', 'ecosection', 'CP', 'proportion_scaled', 'proportion_unscaled', 'value_scaled','value_unscaled', 'total_value'])
+        w.writerow(['UID', 'name', 'subregion', 'ecosection', 'CP', 'proportion_scaled', 'proportion_unscaled', 'value_scaled','value_unscaled', 'total_value'])
 
         for mpa in otable:
-            parentid = mpa_dict[mpa]['parent_id']
             name = mpa_dict[mpa]['name']
-            biome = mpa_dict[mpa]['biome']
-            type = mpa_dict[mpa]['type']
-            mgmt = mpa_dict[mpa]['mgmt']
             for ecosection in otable[mpa]:
                 for cp in otable[mpa][ecosection]:
                     pct_of_og = otable[mpa][ecosection][cp]['pct_of_og']
@@ -1259,7 +1270,7 @@ def writeOutputTable1(otable, opath, mpa_dict):
                     scaled_area = otable[mpa][ecosection][cp]['scaled_area']
                     total_area = otable[mpa][ecosection][cp]['og_area']
                     pct_of_og_unscaled = otable[mpa][ecosection][cp]['pct_of_og_unscaled']
-                    w.writerow([mpa.encode('utf8'), parentid, name.encode('utf8'), biome, type, mgmt, subregion, ecosection, cp, pct_of_og, pct_of_og_unscaled, scaled_area, unscaled_area, total_area])
+                    w.writerow([mpa.encode('utf8'), name.encode('utf8'), subregion, ecosection, cp, pct_of_og, pct_of_og_unscaled, scaled_area, unscaled_area, total_area])
 
 def createOutputTable2(o_table_1, cp_area_overlap_dict):
     table2 = {}
