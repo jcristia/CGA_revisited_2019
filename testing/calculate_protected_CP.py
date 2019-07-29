@@ -1124,7 +1124,7 @@ def loadInteractionsMatrix(imatrix_path):
 #            if interaction == 'Negligible':
 #                interaction = 'LOW'
 
-            if cp not in imatrix or interaction == 'Negligible':
+            if cp not in imatrix:
                 imatrix[cp] = {}
 
             imatrix[cp][hu] = interaction         
@@ -1143,13 +1143,28 @@ def determineInteraction(imatrix, cp, hu):
     if cp[length-3:-1] == 'ri':
         cp = cp[:-3]
         length = 0
-    hu = hu.split('_')[3]
-
+        
     if cp in imatrix:
-        if hu in imatrix[cp]:
-            if detailed_status:
-                print "processing " + cp + " in determineInteraction"
-            return imatrix[cp][hu]
+        if hu in hu_multiple:
+            hu_orig = hu
+            scores = []
+            for variant in hu_multiple[hu_orig]['variants']:
+                hu = variant.split('_')
+                hu = (''.join(hu[3] + hu[-1])).lower()
+                if hu in imatrix[cp]:
+                    if detailed_status:
+                        print "processing " + cp + " in determineInteraction"
+                    scores.append(imatrix[cp][hu])
+            if 'HIGH' in scores:
+                return 'HIGH'
+            elif 'MODERATE' in scores:
+                return 'MODERATE'
+        else:
+            hu = hu.split('_')[3]
+            if hu in imatrix[cp]:
+                if detailed_status:
+                    print "processing " + cp + " in determineInteraction"
+                return imatrix[cp][hu]          
     #else:
         #print cp + " not in imatrix"
         # I don't want to make this an error since it is possible that a cp has no interactions
