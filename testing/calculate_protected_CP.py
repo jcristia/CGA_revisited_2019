@@ -34,7 +34,7 @@ detailed_status = True
 #
 ##
 
-source_mxd = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\20190703\spatial\CP_HU_MPA_Layers.mxd'
+source_mxd = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\spatial\CP_HU_MPA_Layers.mxd'
 
 ### scaling_attribute & scaling_attribute_file ###
 #
@@ -70,7 +70,7 @@ scaling_attribute_file = None
 #
 ##
 
-working_gdb_folder = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\original_Karin_20190725\spatial\working_TEMP'
+working_gdb_folder = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\spatial\working_TEMP'
 
 ### sr_code ###
 #
@@ -229,7 +229,7 @@ inclusion_matrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_
 # calculations
 #
 
-override_y = True
+override_y = False
 override_n = True
 
 override_u = True # This one behaves differently from _y and _n please read above and
@@ -272,8 +272,8 @@ output4_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_
 #
 
 hu_multiple = {'hu_co_demersalfishing_trapcom_d': {'variants':
-                                                   ['hu_co_demersalfishing_trapcom_d_PRAWN',
-                                                    'hu_co_demersalfishing_trapcom_d_CRAB']},
+                                                   ['hu_co_demersalfishing_traprec_d_PRAWN',
+                                                    'hu_co_demersalfishing_traprec_d_CRAB']},
                'hu_co_pelagicfishing_purseseine_d': {'variants':
                                                    ['hu_co_pelagicfishing_purseseine_d_SALMON',
                                                     'hu_co_pelagicfishing_purseseine_d_HERRING',
@@ -673,11 +673,28 @@ def shouldInclude(pct_in_mpa, threshold, im, fc, mpa):
         return pct_in_mpa > threshold
 
     # If fc not in inclusion matrix use conventional inclusion test
-    if fc not in im[mpa]:
+    if fc not in im[mpa] and fc not in hu_multiple:
         return pct_in_mpa > threshold
 
-    if fc in hu_multiple:  #JC 20190703: TO DO
-        print fc
+    # if fc has a variation, then do a separate set of tests
+    if fc in hu_multiple:  #JC 20190703: TO DO. This is just to get the ival, then do condition testing.
+        #print fc + " is a hu_multiple"
+        ival_list = []
+        for variant in hu_multiple[fc]['variants']:
+            ivaltemp = im[mpa][variant]
+            ival_list.append(ivaltemp)
+        #print ival_list
+        if not ival_list: #if list is emtpy
+            return pct_in_mpa > threshold
+
+        # If hu is permitted or not restricted and override is disabled then include it
+        if ('O' in ival_list or 'C' in ival_list) and not override_y:
+            return True
+        # See above but for restricted
+        if ('X' in ival_list or 'na' in ival_list) and not override_n:
+            return False
+        # Otherwise override whatever value is in i_val with conventional test
+        return pct_in_mpa > threshold
 
     # Get inclusion value
     i_val = im[mpa][fc]
@@ -1650,21 +1667,27 @@ with open(cpOverlap_DictPath, 'wb') as f:
 
 # Tack in dummy data for HU that should be in each MPA according to the inclusion matrix
 # but didn't have spatial data that sufficiently intersected
-for mpa in inclusion_matrix:
-    for hu in inclusion_matrix[mpa]:
-        if inclusion_matrix[mpa][hu] in ['O', 'C'] :
-            if mpa not in hu_in_mpas:
-                hu_in_mpas[mpa] = {}
+if not override_y:
+    for mpa in inclusion_matrix:
+        for hu in inclusion_matrix[mpa]:
+            if inclusion_matrix[mpa][hu] in ['O', 'C']:
+                if mpa not in hu_in_mpas:
+                    hu_in_mpas[mpa] = {}
 
-            if hu not in hu_in_mpas[mpa]:    
-                hu_in_mpas[mpa][hu] = {'ecosect_placeholder': # I dont think these values or the ecosection name matters here since all we need to know is if an hu occurs in an mpa.
-                                       {'clip_area': 1,
-                                       'orig_area': 1,
-                                       'mpa_area': 1,
-                                       'region_area': 1,
-                                       'pct_in_mpa': 1,
-                                       'pct_of_region': 1,
-                                       'pct_of_total': 1}}
+                for fc in hu_multiple:
+                    if hu in hu_multiple[fc]['variants']:
+                        hu = fc
+                        break
+
+                if hu not in hu_in_mpas[mpa]:
+                    hu_in_mpas[mpa][hu] = {'ecosect_placeholder': # I dont think these values or the ecosection name matters here since all we need to know is if an hu occurs in an mpa.
+                                           {'clip_area': 1,
+                                           'orig_area': 1,
+                                           'mpa_area': 1,
+                                           'region_area': 1,
+                                           'pct_in_mpa': 1,
+                                           'pct_of_region': 1,
+                                           'pct_of_total': 1}}
 # Clean up
 if cleanUpTempData:
     arcpy.Delete_management(working_gdb)
