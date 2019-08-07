@@ -141,7 +141,7 @@ mpa_name_fields = ['UID']
 # doesn't exist then you will miss the first row of your data.
 ##
 
-imatrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\input\interactionmatrix_MgmtF2_20190124_withIH.csv'
+imatrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\input\interactionmatrix_testset2_splittingfisheries.csv'
 
 ### output1_path & output2_path ###
 #
@@ -184,7 +184,7 @@ complexFeatureClasses = ['eco_coarse_bottompatches_polygons_d', 'eco_coarse_geom
 #
 ##
 
-cleanUpTempData = True
+cleanUpTempData = False
 
 ### inclusion_matrix_path ###
 #
@@ -207,7 +207,7 @@ cleanUpTempData = True
 # variables below
 #
 
-inclusion_matrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\input\SpatialI_AssessI_20190326.csv'
+inclusion_matrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\input\SpatialI_test_Assess_splitfisheries.csv'
 
 ### override_y & _n & _u ###
 #
@@ -228,11 +228,25 @@ inclusion_matrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_
 # MPA. If None then it will allow the script to decide inclusion based on the spatial
 # calculations
 #
+# NEW NOTES:
+# To do a "typical" run:
+# override_y = False
+# override_n = True
+# Then anything with a O or C in the inclusion matrix will be considered present even if it does not spatially overlap. Anything with a X or na will only be considered present if it spatially overlaps (spatial ovelap "overrides" the X)
+#
+# To do a run with the inclusion matrix only and no spatial data, so that the inclusion matrix determines the presence of an hu:
+# override_y = False
+# override_n = False
+#
+# To do a run with spatial data, but where the inclusion matrix can override spatial overlap so that a hu is not included even if it spatially overlaps:
+# override_y = True
+# override_n = False
+# In this case, a hu with O/C is only considered present in an mpa if it spatially overlaps. A hu with X/na is considered absent even if it overlaps.
 
 override_y = False
-override_n = True
+override_n = False
 
-override_u = True # This one behaves differently from _y and _n please read above and
+#override_u = True # This one behaves differently from _y and _n please read above and
                   # be careful when setting
 
 ### Conservation Priority area overlap ###
@@ -271,9 +285,9 @@ output4_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_
 # If an mpa allows more than 1 type, we only want to count this once.
 #
 
-hu_multiple = {'hu_co_demersalfishing_trapcom_d': {'variants':
-                                                   ['hu_co_demersalfishing_traprec_d_PRAWN',
-                                                    'hu_co_demersalfishing_traprec_d_CRAB']},
+hu_multiple = {'hu_co_demersalfishing_inverttrapcom_d': {'variants':
+                                                   ['hu_co_demersalfishing_inverttrapcom_d_PRAWN',
+                                                    'hu_co_demersalfishing_inverttrapcom_d_CRAB']},
                'hu_co_pelagicfishing_purseseine_d': {'variants':
                                                    ['hu_co_pelagicfishing_purseseine_d_SALMON',
                                                     'hu_co_pelagicfishing_purseseine_d_HERRING',
@@ -677,8 +691,7 @@ def shouldInclude(pct_in_mpa, threshold, im, fc, mpa):
         return pct_in_mpa > threshold
 
     # if fc has a variation, then do a separate set of tests
-    if fc in hu_multiple:  #JC 20190703: TO DO. This is just to get the ival, then do condition testing.
-        #print fc + " is a hu_multiple"
+    if fc in hu_multiple:
         ival_list = []
         for variant in hu_multiple[fc]['variants']:
             ivaltemp = im[mpa][variant]
@@ -729,10 +742,10 @@ def shouldInclude(pct_in_mpa, threshold, im, fc, mpa):
 # size of the fc
 #
     
-def process_geometry(base_layer, final_mpa_fc_name, clipped_adjusted_area, scaling_attribute,
-                     mpa_name_attribute, mpa_area_attribute, new_bc_total_area_field,
-                     pct_of_mpa_field, pct_of_total_field, mpa_subregion_field, mpa_area_attribute_section,
-                     clipped_adj_area_mpaTotal, pct_of_mpa_field_Total, density_field, value_type):
+def process_geometry(base_layer, final_mpa_fc_name, clipped_adjusted_area, scaling_attribute, mpa_name_attribute,
+                    mpa_area_attribute, new_bc_total_area_field, pct_of_mpa_field, pct_of_total_field, mpa_subregion_field, mpa_area_attribute_section, clipped_adj_area_mpaTotal, pct_of_mpa_field_Total, density_field, value_type):
+
+#def process_geometry(base_layer, final_mpa_fc_name, clipped_adjusted_area, scaling_attribute, mpa_name_attribute, mpa_area_attribute, new_bc_total_area_field, pct_of_mpa_field, pct_of_total_field, mpa_subregion_field, mpa_area_attribute_section, clipped_adj_area_mpaTotal, pct_of_mpa_field_Total, density_field, value_type):
             
     working_intersect = base_layer + '_Intersect'
 
@@ -855,10 +868,8 @@ def process_geometry(base_layer, final_mpa_fc_name, clipped_adjusted_area, scali
 #     'pct_of_region' -> clip_area / region_area (if applicable otherwise None)
 #     'pct_of_total'  -> clip_area / orig_area
 
-def calculate_presence(working_layer, final_mpa_fc_name, clipped_adjusted_area,
-                       pct_of_total_field, pct_of_mpa_field, mpa_name_attribute,
-                       scaling_attribute, threshold, subregion, imatrix, mpa_subregion_field, mpa_area_attribute_section,
-                       clipped_adj_area_mpaTotal, pct_of_mpa_field_Total, density_field, value_type):
+def calculate_presence(working_layer, final_mpa_fc_name, clipped_adjusted_area, pct_of_total_field, pct_of_mpa_field, mpa_name_attribute, scaling_attribute, threshold, subregion, imatrix, mpa_subregion_field, mpa_area_attribute_section, clipped_adj_area_mpaTotal, pct_of_mpa_field_Total, density_field, value_type):
+
     mpas = {}
     sliver_freq = {} # to get sliver frequencies
 
@@ -1121,8 +1132,8 @@ def loadInteractionsMatrix(imatrix_path):
             if interaction == 'MEDIUM' or interaction == 'Minor Negative':
                 interaction = 'MODERATE'
 
-#            if interaction == 'Negligible':
-#                interaction = 'LOW'
+            if interaction == 'Negligible':
+                interaction = 'Negligible'
 
             if cp not in imatrix:
                 imatrix[cp] = {}
@@ -1137,7 +1148,7 @@ def loadInteractionsMatrix(imatrix_path):
 # from the imatrix
 #
 
-def determineInteraction(imatrix, cp, hu):
+def determineInteraction(imatrix, cp, hu, mpa):
     cp = '_'.join(cp.split('_')[2:4])
     length = len(cp)            #karin added code to truncate ri1, etc, off colonies UIDs so that they match the interaction matrix
     if cp[length-3:-1] == 'ri':
@@ -1148,28 +1159,37 @@ def determineInteraction(imatrix, cp, hu):
         if hu in hu_multiple:
             hu_orig = hu
             scores = []
+            hu_list = []
             for variant in hu_multiple[hu_orig]['variants']:
                 hu = variant.split('_')
                 hu = (''.join(hu[3] + hu[-1])).lower()
                 if hu in imatrix[cp]:
-                    if detailed_status:
-                        print "processing " + cp + " in determineInteraction"
-                    scores.append(imatrix[cp][hu])
+                    #if detailed_status:
+                        #print "processing " + cp + " in determineInteraction"
+                    # at this point the hu_orig has passed through the shouldInclude function and considered the overrides, and we know that at least one variant is being considered present. So now, we need to consider the scenario where we are using the inclusion matrix to say that a certain activity is not present (so either not using spatial data, or override_n is set to false and we aren't considering spatial overlap)
+                    exclude = override_n is False and (inclusion_matrix[mpa][variant] == 'X' or inclusion_matrix[mpa][variant] == 'na')
+                    if not exclude:
+                        scores.append(imatrix[cp][hu])
+                        hu_list.append(variant)
             if 'HIGH' in scores:
-                return 'HIGH'
+                return 'HIGH', scores, hu_list
             elif 'MODERATE' in scores:
-                return 'MODERATE'
+                return 'MODERATE', scores, hu_list
+            elif 'NEGLIGIBLE':
+                return 'NEGLIGIBLE', scores, hu_list
+            else:
+                return None, scores, hu_list
         else:
             hu = hu.split('_')[3]
             if hu in imatrix[cp]:
-                if detailed_status:
-                    print "processing " + cp + " in determineInteraction"
-                return imatrix[cp][hu]          
+                #if detailed_status:
+                    #print "processing " + cp + " in determineInteraction"
+                return imatrix[cp][hu], [], []       
     #else:
         #print cp + " not in imatrix"
         # I don't want to make this an error since it is possible that a cp has no interactions
         # Therefore it's very important that names match between files and the imatrix
-    return None
+    return None, [], []
 
 ## identifyInteractions ##
 #
@@ -1197,7 +1217,7 @@ def identifyInteractions(hu_in_mpas, cp_in_mpas, imatrix):
                     continue  # we only need the cp once per mpa, so if we have already encountered it then skip
                         
                 for hu in hu_in_mpas[mpa]:
-                    interaction = determineInteraction(imatrix, cp, hu)
+                    interaction, score_list, hu_list = determineInteraction(imatrix, cp, hu, mpa)
                     if interaction is not None:
                         cp_in_mpa_i[mpa][cp]['interactions'].append(interaction)
 
@@ -1441,15 +1461,33 @@ def createOutputTable4(hu_in_mpas, cp_in_mpas, imatrix, output4_path):
             for cp in cp_in_mpas[mpa][ecosection]:
 
                 for hu in hu_in_mpas[mpa]:
-                    interaction = determineInteraction(imatrix, cp, hu)
+                    interaction, score_list, hu_list = determineInteraction(imatrix, cp, hu, mpa)
                     if interaction is not None:
-
                         if cp not in cphu_int[mpa]:
                             cphu_int[mpa][cp] = {}
-                        cphu_int[mpa][cp][hu] = interaction
+                        if len(score_list) == 0:
+                            cphu_int[mpa][cp][hu] = {}
+                            cphu_int[mpa][cp][hu]['interaction'] = interaction
+                            if interaction != 'NEGLIGIBLE':
+                                cphu_int[mpa][cp][hu]['contribute'] = 'yes'
+                            else:
+                                cphu_int[mpa][cp][hu]['contribute'] = 'no'
+                        else:
+                            contrib_decided = False
+                            for i in range(len(score_list)):
+                                cphu_int[mpa][cp][hu_list[i]] = {}
+                                cphu_int[mpa][cp][hu_list[i]]['interaction'] = score_list[i]
+                                if score_list[i] == 'HIGH' and not contrib_decided:
+                                    cphu_int[mpa][cp][hu_list[i]]['contribute'] = 'yes'
+                                    contrib_decided = True
+                                elif score_list[i] == 'MODERATE' and 'HIGH' not in score_list and not contrib_decided:
+                                    cphu_int[mpa][cp][hu_list[i]]['contribute'] = 'yes'
+                                    contrib_decided = True
+                                else:
+                                    cphu_int[mpa][cp][hu_list[i]]['contribute'] = 'no'
                                           
     # write to output csv
-    cols = ['mpa','cp','hu','score']
+    cols = ['mpa','cp','hu','score','contribute']
 
     with open(output4_path, 'wb') as f:
         w = csv.writer(f)
@@ -1460,8 +1498,9 @@ def createOutputTable4(hu_in_mpas, cp_in_mpas, imatrix, output4_path):
         for mpa in cphu_int:
             for cp in cphu_int[mpa]:
                 for hu in cphu_int[mpa][cp]:
-                        score = cphu_int[mpa][cp][hu]
-                        w.writerow([mpa.encode('utf8'), cp, hu, score])
+                        score = cphu_int[mpa][cp][hu]['interaction']
+                        contrib = cphu_int[mpa][cp][hu]['contribute']
+                        w.writerow([mpa.encode('utf8'), cp, hu, score, contrib])
 
 
   ##               ##
