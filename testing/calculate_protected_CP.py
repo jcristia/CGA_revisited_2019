@@ -141,7 +141,7 @@ mpa_name_fields = ['UID']
 # doesn't exist then you will miss the first row of your data.
 ##
 
-imatrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\input\interactionmatrix_testset2_splittingfisheries.csv'
+imatrix_path = r'C:\Users\jcristia\Documents\GIS\DFO\Python_Script\CGA_revisted_2019\testing\input\interactionmatrix_MgmtF2_20190124_withIH.csv'
 
 ### output1_path & output2_path ###
 #
@@ -1132,8 +1132,8 @@ def loadInteractionsMatrix(imatrix_path):
             if interaction == 'MEDIUM' or interaction == 'Minor Negative':
                 interaction = 'MODERATE'
 
-            if interaction == 'Negligible':
-                interaction = 'Negligible'
+            if interaction == 'Negligible' or interaction == 'NEGLIGIBLE':
+                interaction = 'NEGLIGIBLE'
 
             if cp not in imatrix:
                 imatrix[cp] = {}
@@ -1175,7 +1175,7 @@ def determineInteraction(imatrix, cp, hu, mpa):
                 return 'HIGH', scores, hu_list
             elif 'MODERATE' in scores:
                 return 'MODERATE', scores, hu_list
-            elif 'NEGLIGIBLE':
+            elif 'NEGLIGIBLE' in scores:
                 return 'NEGLIGIBLE', scores, hu_list
             else:
                 return None, scores, hu_list
